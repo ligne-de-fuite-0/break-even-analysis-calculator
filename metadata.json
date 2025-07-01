@@ -1,0 +1,5 @@
+{
+  "name": "Break-Even Analysis Calculator",
+  "description": "A web application to calculate break-even quantity and sales based on fixed costs, variable costs, and unit price. It allows users to compare different scenarios with a visual chart.",
+  "requestFramePermissions": []
+}

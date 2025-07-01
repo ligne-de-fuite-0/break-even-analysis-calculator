@@ -1,0 +1,19 @@
+{
+  "name": "break-even-analysis-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild index.tsx --bundle --platform=browser --outfile=dist/index.js --jsx=automatic --define:process.env.NODE_ENV='\"production\"' && cp index.html dist/"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "recharts": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "esbuild": "^0.21.3",
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot, ReferenceArea } from 'recharts';
 import { LineChartIcon, DownloadIcon } from './icons';
 
@@ -10,6 +10,7 @@ interface BreakdownChartProps {
   unitPrice: number;
   breakEvenQuantity: number;
   breakEvenSales: number;
+  autoDownload?: boolean;
 }
 
 const BreakdownChartCard: React.FC<BreakdownChartProps> = ({
@@ -17,11 +18,13 @@ const BreakdownChartCard: React.FC<BreakdownChartProps> = ({
   variableCost,
   unitPrice,
   breakEvenQuantity,
-  breakEvenSales
+  breakEvenSales,
+  autoDownload
 }) => {
   const chartRef = useRef<HTMLDivElement>(null);
+  const downloadTriggered = useRef(false);
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     if (!chartRef.current || typeof html2canvas === 'undefined') {
       console.error("Chart reference or html2canvas is not available.");
       return;
@@ -43,7 +46,18 @@ const BreakdownChartCard: React.FC<BreakdownChartProps> = ({
     } catch (error) {
       console.error('Failed to capture chart for download:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (autoDownload && !downloadTriggered.current && chartRef.current) {
+        downloadTriggered.current = true;
+        // Use a timeout to ensure the chart animation completes and everything is rendered.
+        const timer = setTimeout(() => {
+            handleDownload();
+        }, 1000);
+        return () => clearTimeout(timer);
+    }
+  }, [autoDownload, handleDownload]);
   
   const chartData = React.useMemo(() => {
     if (unitPrice <= variableCost || unitPrice <= 0) return [];

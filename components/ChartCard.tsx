@@ -3,6 +3,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Scenario } from '../types';
 import { ChartIcon, DownloadIcon } from './icons';
 
+declare const html2canvas: any;
+
 interface ChartProps {
   data: Scenario[];
 }
@@ -11,76 +13,26 @@ const ChartCard: React.FC<ChartProps> = ({ data }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
   const handleDownload = async () => {
-    if (!chartRef.current) {
-      console.error("Chart reference is not available.");
-      return;
-    }
-
-    const svgElement = chartRef.current.querySelector('svg');
-    if (!svgElement) {
-      console.error("SVG element not found.");
+    if (!chartRef.current || typeof html2canvas === 'undefined') {
+      console.error("Chart reference or html2canvas is not available.");
       return;
     }
 
     try {
-      const { width, height } = svgElement.getBoundingClientRect();
+      const canvas = await html2canvas(chartRef.current, {
+        backgroundColor: '#1e293b', // bg-slate-800
+        scale: 2, // for higher resolution
+        useCORS: true,
+      });
 
-      const styles = Array.from(document.styleSheets)
-        .map(sheet => {
-          try {
-            return Array.from(sheet.cssRules)
-              .map(rule => rule.cssText)
-              .join('');
-          } catch (e) {
-            console.warn('Cannot read CSS rules from stylesheet', sheet.href);
-            return '';
-          }
-        })
-        .join('');
-
-      const svgClone = svgElement.cloneNode(true) as SVGElement;
-      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-      svgClone.setAttribute('width', String(width));
-      svgClone.setAttribute('height', String(height));
-      
-      const styleElement = document.createElement('style');
-      styleElement.textContent = styles;
-      
-      const defsElement = document.createElement('defs');
-      defsElement.appendChild(styleElement);
-      svgClone.insertBefore(defsElement, svgClone.firstChild);
-
-      const svgString = new XMLSerializer().serializeToString(svgClone);
-      const dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
-
-      const image = new Image();
-      image.onload = () => {
-        const canvas = document.createElement('canvas');
-        const scale = 2; // Higher resolution
-        canvas.width = width * scale;
-        canvas.height = height * scale;
-
-        const context = canvas.getContext('2d');
-        if (context) {
-          context.scale(scale, scale);
-          context.fillStyle = '#1e293b'; // bg-slate-800
-          context.fillRect(0, 0, width, height);
-          context.drawImage(image, 0, 0, width, height);
-          
-          const link = document.createElement('a');
-          link.href = canvas.toDataURL('image/png');
-          link.download = 'scenario-comparison-chart.png';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
-      };
-      image.onerror = (err) => {
-        console.error('Failed to load SVG image for download.', err);
-      };
-      image.src = dataUri;
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = 'scenario-comparison-chart.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
-      console.error('Failed to prepare chart for download:', error);
+      console.error('Failed to capture chart for download:', error);
     }
   };
 

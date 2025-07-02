@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Scenario } from '../types';
 import { ChartIcon, DownloadIcon } from './icons';
@@ -7,12 +7,14 @@ declare const html2canvas: any;
 
 interface ChartProps {
   data: Scenario[];
+  autoDownload?: boolean;
 }
 
-const ChartCard: React.FC<ChartProps> = ({ data }) => {
+const ChartCard: React.FC<ChartProps> = ({ data, autoDownload }) => {
   const chartRef = useRef<HTMLDivElement>(null);
+  const downloadTriggered = useRef(false);
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     if (!chartRef.current || typeof html2canvas === 'undefined') {
       console.error("Chart reference or html2canvas is not available.");
       return;
@@ -34,7 +36,18 @@ const ChartCard: React.FC<ChartProps> = ({ data }) => {
     } catch (error) {
       console.error('Failed to capture chart for download:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (autoDownload && !downloadTriggered.current && data.length > 0 && chartRef.current) {
+        downloadTriggered.current = true;
+        // Use a timeout to ensure the chart animation completes and everything is rendered.
+        const timer = setTimeout(() => {
+            handleDownload();
+        }, 1000); 
+        return () => clearTimeout(timer);
+    }
+  }, [autoDownload, data, handleDownload]);
 
 
   const formatCurrency = (value: number) => {

@@ -38,6 +38,7 @@ const App: React.FC = () => {
   const [currentResult, setCurrentResult] = useState<{ quantity: number; sales: number } | null>(null);
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [activeChartTab, setActiveChartTab] = useState<'comparison' | 'breakdown'>('comparison');
+  const [chartToAutoDownload, setChartToAutoDownload] = useState<string | null>(null);
   
   const initialLoadHandled = useRef(false);
 
@@ -57,6 +58,7 @@ const App: React.FC = () => {
     initialLoadHandled.current = true;
 
     const params = new URLSearchParams(window.location.search);
+    setChartToAutoDownload(params.get('autodownload'));
     const scenariosParam = params.get('scenarios');
 
     if (scenariosParam) {
@@ -230,7 +232,12 @@ const App: React.FC = () => {
                     disabled={!currentResult}
                 />
             </div>
-             {activeChartTab === 'comparison' && <ChartCard data={scenarios} />}
+             {activeChartTab === 'comparison' && (
+                <ChartCard 
+                    data={scenarios} 
+                    autoDownload={chartToAutoDownload === 'comparison'} 
+                />
+             )}
              {activeChartTab === 'breakdown' && currentResult && (
                  <BreakdownChartCard
                      fixedCosts={parseFloat(fixedCosts) || 0}
@@ -238,6 +245,7 @@ const App: React.FC = () => {
                      unitPrice={parseFloat(unitPrice) || 0}
                      breakEvenQuantity={currentResult.quantity}
                      breakEvenSales={currentResult.sales}
+                     autoDownload={chartToAutoDownload === 'breakdown'}
                  />
              )}
             {activeChartTab === 'breakdown' && !currentResult && (

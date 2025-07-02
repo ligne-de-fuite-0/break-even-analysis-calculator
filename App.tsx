@@ -30,27 +30,95 @@ const TabButton: React.FC<{
 
 
 const App: React.FC = () => {
-  const [initialParams] = useState(() => {
-    if (typeof window === 'undefined') {
-      return { fc: null, vc: null, up: null };
-    }
-    const params = new URLSearchParams(window.location.search);
-    return {
-      fc: params.get('fc'),
-      vc: params.get('vc'),
-      up: params.get('up'),
-    };
-  });
-
-  const [fixedCosts, setFixedCosts] = useState<string>(initialParams.fc || '50000');
-  const [variableCost, setVariableCost] = useState<string>(initialParams.vc || '75');
-  const [unitPrice, setUnitPrice] = useState<string>(initialParams.up || '125');
+  const [fixedCosts, setFixedCosts] = useState<string>('50000');
+  const [variableCost, setVariableCost] = useState<string>('75');
+  const [unitPrice, setUnitPrice] = useState<string>('125');
   const [error, setError] = useState<string | null>(null);
 
   const [currentResult, setCurrentResult] = useState<{ quantity: number; sales: number } | null>(null);
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [activeChartTab, setActiveChartTab] = useState<'comparison' | 'breakdown'>('comparison');
+  
+  const initialLoadHandled = useRef(false);
 
+  const calculateBreakEven = (fc: number, vc: number, p: number) => {
+     if (isNaN(fc) || isNaN(vc) || isNaN(p) || p <= vc || fc < 0 || vc < 0 || p < 0) {
+         return null;
+     }
+     const breakEvenQuantity = fc / (p - vc);
+     const breakEvenSales = fc / (1 - (vc / p));
+     return { quantity: breakEvenQuantity, sales: breakEvenSales };
+  };
+
+  useEffect(() => {
+    if (initialLoadHandled.current || typeof window === 'undefined') {
+        return;
+    }
+    initialLoadHandled.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const scenariosParam = params.get('scenarios');
+
+    if (scenariosParam) {
+        try {
+            const scenariosFromUrl = JSON.parse(decodeURIComponent(scenariosParam));
+            if (Array.isArray(scenariosFromUrl)) {
+                const newScenarios: Scenario[] = [];
+                let firstValidResult: { quantity: number; sales: number } | null = null;
+                
+                scenariosFromUrl.forEach((s: any, index: number) => {
+                    const fc = parseFloat(s.fc);
+                    const vc = parseFloat(s.vc);
+                    const p = parseFloat(s.up);
+                    
+                    const result = calculateBreakEven(fc, vc, p);
+                    if (result) {
+                        newScenarios.push({
+                            id: Date.now() + index,
+                            name: `情景 ${scenarios.length + newScenarios.length + 1}`,
+                            fixedCosts: fc,
+                            variableCost: vc,
+                            unitPrice: p,
+                            breakEvenQuantity: result.quantity,
+                            breakEvenSales: result.sales,
+                        });
+                        if (!firstValidResult) {
+                            firstValidResult = result;
+                            setFixedCosts(String(fc));
+                            setVariableCost(String(vc));
+                            setUnitPrice(String(p));
+                        }
+                    }
+                });
+
+                if (newScenarios.length > 0) {
+                    setScenarios(prev => [...prev, ...newScenarios]);
+                    setCurrentResult(firstValidResult);
+                    setActiveChartTab('comparison');
+                }
+            }
+        } catch (e) {
+            console.error("Failed to parse or process 'scenarios' URL parameter:", e);
+        }
+    } else {
+        const fcParam = params.get('fc');
+        const vcParam = params.get('vc');
+        const upParam = params.get('up');
+        if (fcParam && vcParam && upParam) {
+            const fc = parseFloat(fcParam);
+            const vc = parseFloat(vcParam);
+            const p = parseFloat(upParam);
+            const result = calculateBreakEven(fc, vc, p);
+            if (result) {
+                setFixedCosts(fcParam);
+                setVariableCost(vcParam);
+                setUnitPrice(upParam);
+                setCurrentResult(result);
+                setActiveChartTab('breakdown');
+            }
+        }
+    }
+  }, []); // Empty array ensures this runs only once on mount.
 
   const handleCalculate = useCallback(() => {
     setError(null);
@@ -84,14 +152,6 @@ const App: React.FC = () => {
     setActiveChartTab('breakdown');
   }, [fixedCosts, variableCost, unitPrice]);
   
-  const initialCalculationDone = useRef(false);
-  useEffect(() => {
-    if (!initialCalculationDone.current && initialParams.fc && initialParams.vc && initialParams.up) {
-      handleCalculate();
-      initialCalculationDone.current = true;
-    }
-  }, [handleCalculate, initialParams]);
-
   const handleAddToComparison = useCallback(() => {
     if (!currentResult) return;
     

@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Scenario } from './types';
 import InputCard from './components/InputCard';
 import ResultsCard from './components/ResultsCard';
@@ -30,9 +30,21 @@ const TabButton: React.FC<{
 
 
 const App: React.FC = () => {
-  const [fixedCosts, setFixedCosts] = useState<string>('50000');
-  const [variableCost, setVariableCost] = useState<string>('75');
-  const [unitPrice, setUnitPrice] = useState<string>('125');
+  const [initialParams] = useState(() => {
+    if (typeof window === 'undefined') {
+      return { fc: null, vc: null, up: null };
+    }
+    const params = new URLSearchParams(window.location.search);
+    return {
+      fc: params.get('fc'),
+      vc: params.get('vc'),
+      up: params.get('up'),
+    };
+  });
+
+  const [fixedCosts, setFixedCosts] = useState<string>(initialParams.fc || '50000');
+  const [variableCost, setVariableCost] = useState<string>(initialParams.vc || '75');
+  const [unitPrice, setUnitPrice] = useState<string>(initialParams.up || '125');
   const [error, setError] = useState<string | null>(null);
 
   const [currentResult, setCurrentResult] = useState<{ quantity: number; sales: number } | null>(null);
@@ -71,6 +83,14 @@ const App: React.FC = () => {
     setCurrentResult({ quantity: breakEvenQuantity, sales: breakEvenSales });
     setActiveChartTab('breakdown');
   }, [fixedCosts, variableCost, unitPrice]);
+  
+  const initialCalculationDone = useRef(false);
+  useEffect(() => {
+    if (!initialCalculationDone.current && initialParams.fc && initialParams.vc && initialParams.up) {
+      handleCalculate();
+      initialCalculationDone.current = true;
+    }
+  }, [handleCalculate, initialParams]);
 
   const handleAddToComparison = useCallback(() => {
     if (!currentResult) return;
